@@ -176,7 +176,7 @@ int serve(int listenfd){
 	pollfds[0].fd= listenfd;
 	pollfds[0].events= POLLIN;
 	while (1) {
-		if (-1==poll(pollfds, curfds, 60*60*1000)) die("poll", 7);
+		if (-1==poll(pollfds, curfds, 60*60*1000)) die("poll", 10);
 		int j;
 		for (j= newlim= 0; j<curfds; j++) {
 			if (pollfds[j].revents) {
@@ -203,8 +203,17 @@ int main(){
 	if (-1==s) die("socket", 3);
 	int optval= 1;
 	if (setsockopt(s, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof optval)) die("setsockopt", 4);
+	if (0==getuid()) {
+                listenaddr_in.sin_port= htons(80);
+        }
 	if (-1==bind(s, listenaddr, sizeof listenaddr_in)) die("bind", 5);
 	if (-1==listen(s, 128)) die("listen", 6);
+        if (0==getuid()) {
+                if (setgid(33/*www-data*/)) die("setgid", 7);
+                if (setuid(33/*www-data*/)) die("setuid", 8);
+                if (-1!=setuid(0)) die("regained root", 9);
+        }
+        printf("listening on port %d\n", ntohs(listenaddr_in.sin_port));
 	serve(s);
 	exit(0);
 }
