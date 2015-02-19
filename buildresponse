@@ -1,0 +1,21 @@
+#!/usr/bin/perl -n
+
+use POSIX qw(strftime);
+
+BEGIN{
+	$date= strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime(time()));
+}
+
+chomp;
+s/"//g;
+
+($cc,$rn,$rc)= split ',';
+
+print <<___;
+str("HTTP/1.1 200 OK\\n\\
+Content-Type: application/json;charset=utf-8\\n\\
+Date: $date\\n\\
+Connection: Close\\n\\
+\\n\\
+{\\"s\\":{\\"sc\\":\\"OK\\"},\\"d\\":{\\"cc\\":\\"$cc\\",\\"rc\\":\\"$rc\\",\\"rn\\":\\"$rn\\"}}\\n"),
+___

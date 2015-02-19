@@ -1,10 +1,13 @@
 #include <arpa/nameser.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
 #include <netinet/in.h>
 #include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -55,7 +58,9 @@ Connection: close\n\
         </body>\n\
 </html>\n")
 };
-struct string good[256];
+struct string good[]= {
+#include "good.h"
+};
 
 int setcontent(int ndx, int rndx) {
 	if (0>rndx) {
@@ -69,6 +74,23 @@ int setcontent(int ndx, int rndx) {
 	workfds[ndx].roff= 0;
 	workfds[ndx].curstate= WRITING;
 	return 0;
+}
+
+short *ipmap;
+
+int lookup(char *buf) {
+	char *parse= strstr(buf, "ip=");
+	if (!parse) return -1;
+	parse+=3;
+	long byte0= strtol(parse, &parse, 10);
+	if (byte0<0||byte0>255||'.'!=*parse++) return -1;
+	long byte1= strtol(parse, &parse, 10);
+	if (byte1<0||byte1>255||'.'!=*parse++) return -1;
+	long byte2= strtol(parse, &parse, 10);
+	if (byte2<0||byte2>255||'.'!=*parse++) return -1;
+	long byte3= strtol(parse, &parse, 10);
+	if (byte3<0||byte3>255) return -1;
+	return ipmap[256*(256*(256*byte0+byte1)+byte2)+byte3];
 }
 
 int handlefd(int ndx, int*n, int max){
@@ -102,7 +124,8 @@ int handlefd(int ndx, int*n, int max){
 			return LISTENING;
 		case READING:
 			len= workfds[ndx].len;
-			siz= read(pollfds[ndx].fd, workfds[ndx].buf+len, 4096-len);
+			/* buf can hold 4096 characters, but will get null terminator */
+			siz= read(pollfds[ndx].fd, workfds[ndx].buf+len, 4095-len);
 			if (1>siz) {
 				if (-1==siz) perror("read"); /* FIXME: decorate with more detail? */
 				close(pollfds[ndx].fd);
@@ -120,7 +143,8 @@ int handlefd(int ndx, int*n, int max){
 					if ('\r'!=buf[j]) sta= 0;
 				}
 				if (2==sta) {
-					setcontent(ndx, -1); /* FIXME: lookup goes here */
+					buf[end]= 0;
+					setcontent(ndx, lookup(buf));
 					return READING;
 				}
 			}
@@ -152,7 +176,7 @@ int serve(int listenfd){
 	pollfds[0].fd= listenfd;
 	pollfds[0].events= POLLIN;
 	while (1) {
-		if (-1==poll(pollfds, curfds, 60*60*1000)) die("poll", 5);
+		if (-1==poll(pollfds, curfds, 60*60*1000)) die("poll", 7);
 		int j;
 		for (j= newlim= 0; j<curfds; j++) {
 			if (pollfds[j].revents) {
@@ -171,12 +195,16 @@ struct sockaddr_in listenaddr_in= {
 void* listenaddr= &listenaddr_in;
 
 int main(){
+	int mapf= open("ip.map", O_RDONLY);
+	if (-1 == mapf) die("open", 1);
+	ipmap= mmap(NULL, 8589934592, PROT_READ, MAP_PRIVATE, mapf, 0);
+	if (MAP_FAILED == ipmap) die("mmap", 2);
 	int s= socket(AF_INET, SOCK_STREAM, 6/*tcp*/);
-	if (-1==s) die("socket", 1);
+	if (-1==s) die("socket", 3);
 	int optval= 1;
-	if (setsockopt(s, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof optval)) die("setsockopt", 2);
-	if (-1==bind(s, listenaddr, sizeof listenaddr_in)) die("bind", 3);
-	if (-1==listen(s, 128)) die("listen", 4);
+	if (setsockopt(s, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof optval)) die("setsockopt", 4);
+	if (-1==bind(s, listenaddr, sizeof listenaddr_in)) die("bind", 5);
+	if (-1==listen(s, 128)) die("listen", 6);
 	serve(s);
 	exit(0);
 }
