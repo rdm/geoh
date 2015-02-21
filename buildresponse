@@ -11,11 +11,21 @@ s/"//g;
 
 ($cc,$rn,$rc)= split ',';
 
+$len=length qq/{"s":{"sc":"OK"},"d":{"cc":"$cc","rc":"$rc","rn":"$rn"}}\n/;
+
 print <<___;
+{str("HTTP/1.1 200 OK\\n\\
+Content-Type: application/json;charset=utf-8\\n\\
+Date: $date\\n\\
+Content-Length: $len\\n\\
+\\n\\
+{\\"s\\":{\\"sc\\":\\"OK\\"},\\"d\\":{\\"cc\\":\\"$cc\\",\\"rc\\":\\"$rc\\",\\"rn\\":\\"$rn\\"}}\\n"),
 str("HTTP/1.1 200 OK\\n\\
 Content-Type: application/json;charset=utf-8\\n\\
 Date: $date\\n\\
-Connection: Close\\n\\
+Content-Length: $len\\n\\
+Keep-Alive: timeout=5\\n\\
+Connection: Keep-Alive\\n\\
 \\n\\
-{\\"s\\":{\\"sc\\":\\"OK\\"},\\"d\\":{\\"cc\\":\\"$cc\\",\\"rc\\":\\"$rc\\",\\"rn\\":\\"$rn\\"}}\\n"),
+{\\"s\\":{\\"sc\\":\\"OK\\"},\\"d\\":{\\"cc\\":\\"$cc\\",\\"rc\\":\\"$rc\\",\\"rn\\":\\"$rn\\"}}\\n")},
 ___

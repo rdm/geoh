@@ -26,10 +26,11 @@ struct workfd {
 	enum state curstate;
 	struct sockaddr_storage addr;
 	int len;
-	char buf[4096];
 	char *resp;
 	int roff;
 	int rlen;
+	int pipe;
+	char buf[4096];
 };
 
 struct pollfd* pollfds;
@@ -58,7 +59,7 @@ Connection: close\n\
         </body>\n\
 </html>\n")
 };
-struct string good[]= {
+struct string good[][2]= {
 #include "good.h"
 };
 
@@ -67,8 +68,9 @@ int setcontent(int ndx, int rndx) {
 		workfds[ndx].resp= bad[1+rndx].text;
 		workfds[ndx].rlen= bad[1+rndx].len;
 	} else {
-		workfds[ndx].resp= good[rndx].text;
-		workfds[ndx].rlen= good[rndx].len;
+		int pipe= workfds[ndx].pipe;
+		workfds[ndx].resp= good[rndx][pipe].text;
+		workfds[ndx].rlen= good[rndx][pipe].len;
 	}
 	pollfds[ndx].events= POLLOUT;
 	workfds[ndx].roff= 0;
@@ -118,6 +120,7 @@ int handlefd(int ndx, int*n, int max){
 					pollfds[k].revents= 0;
 					workfds[k].curstate= READING;
 					workfds[k].len= 0;
+					workfds[k].pipe= 0;
 					if (k>=*n) *n=k+1;
 				}
 			}
