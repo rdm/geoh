@@ -31,7 +31,7 @@ struct workfd {
 	char *resp;
 	int roff;
 	int rlen;
-	enum {GOOD, NEUTRAL, BAD} isok;
+	enum {GOOD, EMPTY, NEUTRAL, BAD} isok;
 	int pipe;
 	double expire;
 	struct sockaddr_storage addr;
@@ -44,7 +44,7 @@ struct workfd* workfds;
 time_t tzero, tnow;
 double now, then, atime;
 int active;
-long ngood, nbad, tgood, tbad;
+long ngood, nempty, nbad, tgood, tempty, tbad;
 
 double gettime() {
 	struct timeval tv;
@@ -81,7 +81,6 @@ struct string good[][2]= {
 };
 
 int setpipe(int ndx, char buf[4096]) {
-	buf[4095]= 0;
 	if (!strcasestr(buf, "Connection: keep-alive")) return 0;
 	workfds[ndx].pipe= 1;
 	workfds[ndx].expire= then;
@@ -89,7 +88,7 @@ int setpipe(int ndx, char buf[4096]) {
 }
 
 int setcontent(int ndx, int rndx) {
-	if (!strnstr(workfds[ndx].buf, key, workfds[ndx].len)) rndx=-1;
+	if (!strstr(workfds[ndx].buf, key, workfds[ndx].len)) rndx=-1;
 	if (0>rndx) {
 		workfds[ndx].isok= BAD;
 		workfds[ndx].resp= bad[1+rndx].text;
@@ -130,6 +129,7 @@ int closefd(int ndx) {
 	pollfds[ndx].revents= 0;
 	switch (workfds[ndx].isok) {
 		case GOOD: ngood++, tgood++; break;
+		case EMPTY: nempty++, tempty++; break;
 		case NEUTRAL: break; /* pipeline between requests */
 		case BAD: nbad++, tbad++; break;
 	}
@@ -161,7 +161,7 @@ int handlefd(int ndx, int*n, int max) {
 					pollfds[k].revents= 0;
 					workfds[k].curstate= READING;
 					workfds[k].len= 0;
-					workfds[k].isok= BAD;
+					workfds[k].isok= EMPTY;
 					workfds[k].pipe= 0;
 					workfds[k].expire= then;
 					if (k>=*n) *n=k+1;
@@ -210,6 +210,7 @@ int handlefd(int ndx, int*n, int max) {
 				if (workfds[ndx].pipe) {
 					switch (workfds[ndx].isok) {
 						case GOOD: ngood++, tgood++; break;
+						case EMPTY: nempty++, tempty++; break;
 						case NEUTRAL: break;
 						case BAD: nbad++, tbad++; break;
 					}
@@ -260,8 +261,8 @@ int serve(int listenfd) {
 		if (active && now > atime) {
 			char when[]= "Clock is broken.............";
 			ctime_r(&tnow, when);
-			printf("%.24s: new good: %ld, new bad: %ld, pending %d, tot good: %ld, tot bad: %ld\n", when, ngood, nbad, newlim, tgood, tbad);
-			active= ngood= nbad= 0;
+			printf("%.24s: NEW good: %ld, empty: %ld, bad: %ld, PENDING %d, TOTAL good: %ld, empty: %ld, bad: %ld\n", when, ngood, nempty, nbad, newlim, tgood, tempty, tbad);
+			active= ngood= nempty= nbad= 0;
 		}
 	}
 }
