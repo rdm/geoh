@@ -60,7 +60,7 @@ struct string {
 };
 
 struct string bad[]= {
-str("HTTP/1.0 400 Bad Request\n\
+str("HTTP/1.0 403 Forbidden\n\
 Content-Type: text/html\n\
 Connection: close\n\
 \n\
@@ -69,10 +69,10 @@ Connection: close\n\
          \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n\
 <html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">\n\
         <head>\n\
-                <title>400 - Bad Request</title>\n\
+                <title>403 - Forbidden</title>\n\
         </head>\n\
         <body>\n\
-                <h1>400 - Bad Request</h1>\n\
+                <h1>403 - Forbidden</h1>\n\
         </body>\n\
 </html>\n")
 };
@@ -88,7 +88,7 @@ int setpipe(int ndx, char buf[4096]) {
 }
 
 int setcontent(int ndx, int rndx) {
-	if (!strstr(workfds[ndx].buf, key, workfds[ndx].len)) rndx=-1;
+	if (!strstr(workfds[ndx].buf, key)) rndx=-1;
 	if (0>rndx) {
 		workfds[ndx].isok= BAD;
 		workfds[ndx].resp= bad[1+rndx].text;
@@ -278,7 +278,10 @@ int main(int c, char**v){
 		static char testkey[7];
 		char choice[]= "'()*-.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz{|}~";
 		int j;
+#ifndef __GNUC__
+		/* GNU doesn't support this - let's hope they're implicitly including entropy */
 		srandomdev();
+#endif
 		for (j= 0; j<6; j++) {
 			testkey[j]= choice[random()%sizeof choice];
 		}
