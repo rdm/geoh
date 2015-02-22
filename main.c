@@ -173,7 +173,7 @@ int handlefd(int ndx, int*n, int max) {
 			/* buf can hold 4096 characters, but will get null terminator */
 			siz= read(pollfds[ndx].fd, workfds[ndx].buf+len, 4095-len);
 			if (1>siz) {
-				if (-1==siz) perror("read"); /* FIXME: decorate with more detail? */
+				if (-1==siz && ECONNRESET != errno) perror("read"); /* connection reset happens too often to be interesting */
 				closefd(ndx);
 				return READING;
 			}
@@ -243,8 +243,8 @@ int serve(int listenfd) {
 		if (-1==poll(pollfds, curfds, 11*1000)) die("poll", 11);
 		workfds[0].expire= then= 10+(now= gettime());
 		if (!active) atime= then;
-		int j;
-		for (j= newlim= 0; j<curfds; j++) {
+		int j, pending;
+		for (j= newlim= 0, pending= -1; j<curfds; j++) {
 			if (pollfds[j].revents) {
 				active=1;
 				handlefd(j, &curfds, maxfds);
@@ -253,6 +253,7 @@ int serve(int listenfd) {
 				if (now > workfds[j].expire) {
 					closefd(j);
 				} else {
+					pending++;
 					newlim= j;
 				}
 			}
@@ -261,7 +262,7 @@ int serve(int listenfd) {
 		if (active && now > atime) {
 			char when[]= "Clock is broken.............";
 			ctime_r(&tnow, when);
-			printf("%.24s: NEW good: %ld, empty: %ld, bad: %ld, PENDING %d, TOTAL good: %ld, empty: %ld, bad: %ld\n", when, ngood, nempty, nbad, newlim, tgood, tempty, tbad);
+			printf("%.24s: NEW good: %ld, empty: %ld, bad: %ld, PENDING %d/%d, TOTAL good: %ld, empty: %ld, bad: %ld\n", when, ngood, nempty, nbad, pending, newlim, tgood, tempty, tbad);
 			active= ngood= nempty= nbad= 0;
 		}
 	}
