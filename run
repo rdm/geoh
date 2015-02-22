@@ -1,2 +1,3 @@
 #!/bin/sh
-exec ./main
+key=$RANDOM # FIXME: replace with actual key
+exec ./main $key

@@ -15,6 +15,8 @@
 
 #include <resolv.h>
 
+char * key;
+
 int die(char *msg, int status) {
 	perror(msg);
 	fflush(stderr);
@@ -87,10 +89,12 @@ int setpipe(int ndx, char buf[4096]) {
 }
 
 int setcontent(int ndx, int rndx) {
+	if (!strnstr(workfds[ndx].buf, key, workfds[ndx].len)) rndx=-1;
 	if (0>rndx) {
 		workfds[ndx].isok= BAD;
 		workfds[ndx].resp= bad[1+rndx].text;
 		workfds[ndx].rlen= bad[1+rndx].len;
+		workfds[ndx].pipe= 0;
 	} else {
 		workfds[ndx].isok= GOOD;
 		int pipe= workfds[ndx].pipe;
@@ -254,8 +258,8 @@ int serve(int listenfd) {
 		}
 		curfds= newlim+1;
 		if (active && now > atime) {
-			char *when= ctime(&tnow);
-			if (!when) when="Clock is broken...........";
+			char when[]= "Clock is broken.............";
+			ctime_r(&tnow, when);
 			printf("%.24s: new good: %ld, new bad: %ld, pending %d, tot good: %ld, tot bad: %ld\n", when, ngood, nbad, newlim, tgood, tbad);
 			active= ngood= nbad= 0;
 		}
@@ -268,7 +272,22 @@ struct sockaddr_in listenaddr_in= {
 };
 void* listenaddr= &listenaddr_in;
 
-int main(){
+int main(int c, char**v){
+	if (2>c) {
+		static char testkey[7];
+		char choice[]= "'()*-.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz{|}~";
+		int j;
+		srandomdev();
+		for (j= 0; j<6; j++) {
+			testkey[j]= choice[random()%sizeof choice];
+		}
+		testkey[6]= 0;
+		key= testkey;
+	} else {
+		key= v[1];
+	}
+	printf("Using key: %s\n", key);
+	fflush(stdout);
 	int mapf= open("ip.map", O_RDONLY);
 	if (-1 == mapf) die("open", 1);
 	ipmap= mmap(NULL, 8589934592, PROT_READ, MAP_PRIVATE, mapf, 0);
