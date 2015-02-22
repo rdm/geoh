@@ -240,8 +240,8 @@ int serve(int listenfd) {
 	pollfds[0].fd= listenfd;
 	pollfds[0].events= POLLIN;
 	while (1) {
-		if (-1==poll(pollfds, curfds, 11*1000)) die("poll", 11);
-		workfds[0].expire= then= 10+(now= gettime());
+		if (-1==poll(pollfds, curfds, 111*1000)) die("poll", 11);
+		workfds[0].expire= then= 110+(now= gettime());
 		if (!active) atime= then;
 		int j, pending;
 		for (j= newlim= 0, pending= -1; j<curfds; j++) {
