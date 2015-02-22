@@ -45,6 +45,7 @@ time_t tzero, tnow;
 double now, then, atime;
 int active;
 long ngood, nempty, nbad, tgood, tempty, tbad;
+char badreq[4096];
 
 double gettime() {
 	struct timeval tv;
@@ -90,6 +91,10 @@ int setpipe(int ndx, char buf[4096]) {
 int setcontent(int ndx, int rndx) {
 	if (!strstr(workfds[ndx].buf, key)) rndx=-1;
 	if (0>rndx) {
+		if (!*badreq) {
+			strncpy(badreq, workfds[ndx].buf, workfds[ndx].len);
+			badreq[workfds[ndx].len]= 0;
+		}
 		workfds[ndx].isok= BAD;
 		workfds[ndx].resp= bad[1+rndx].text;
 		workfds[ndx].rlen= bad[1+rndx].len;
@@ -262,8 +267,9 @@ int serve(int listenfd) {
 		if (active && now > atime) {
 			char when[]= "Clock is broken.............";
 			ctime_r(&tnow, when);
+			if (*badreq) fprintf(stderr, "%s\n", badreq);
 			printf("%.24s: NEW good: %ld, empty: %ld, bad: %ld, PENDING %d/%d, TOTAL good: %ld, empty: %ld, bad: %ld\n", when, ngood, nempty, nbad, pending, newlim, tgood, tempty, tbad);
-			active= ngood= nempty= nbad= 0;
+			badreq[0]= active= ngood= nempty= nbad= 0;
 		}
 	}
 }
