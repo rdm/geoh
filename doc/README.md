@@ -95,3 +95,16 @@ refine-csv.ijs generates three .csv files:
 Once these are generated, buildmap reads in the ip-nub.csv file and generates the ip.map file.
 
 Note that ip.map is highly compressible. The file is 8GB but bzip2 compresses it down to about 6MB (gzip compresses it down to about 15MB). The file needs to be uncompressed on the server, but I put a compressed copy on s3 (along with the sources for the server), so that it's readily available when I need it. (Licensing prevents me from placing ip.map on github in a publically readable fashion, and we are already managing s3 keys for other purposes.)
+
+Timeouts:
+--------
+
+Timeouts are always a bit "iffy". We can always imagine cases where they are the wrong choice.
+
+Currently, I'm using timeouts just shy of 2 minutes for my pipeline. If I use 10 second timeouts, the client code is too slow and mostly the connections it makes time out. This indicates that the client code is utterly inefficient and wasteful. It should easily be a thousand times faster than what it currently is.
+
+Anyways... Note that the timeout I use for poll is 1 second longer than the timeout I use for logging and for pipelining. This means that typically I'll not have to run through poll twice to trigger a timeout just because some part of the system is slow. (In fact, this is a complete non-issue for my current test setup. But we've got much bigger problems to concern ourselves with...)
+
+Note also that my "listen" socket gets handled by the same loop and same timeout conditionals as everything else. Philosophically speaking, conditional statements are an order of magnitude slower than simple arithmetic statements, so I prefer to avoid conditionals when that's easy. So before I run through the main servicing loop after poll() I always set the timeout on the listening socket so that it's not timed out. If I failed to do this, the server would shut down after the first timeout interval.
+
+
