@@ -15,8 +15,9 @@ Note that you can deploy many instances of this server on the same machine (to t
     /supervise/geoh/ # the "concrete" instance
     /supervice/geoh01/run # A virtual instance, this 'run' looks like:
 
-    #!/bin/sh
-    exec /supervise/geoh/run
+```sh
+#!/bin/sh
+exec /supervise/geoh/run```
 
 You can also deploy this on many machines if you use a load balancing front-end (but I have not managed to generate a load high enough to determine whether a load balancer is efficient enough for the multiple-machine approach to be useful).
 
