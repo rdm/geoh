@@ -75,5 +75,23 @@ The second number after PENDING is the number of readfd entries I'm holding to r
 
 So, in the above log line example, 499 is the index of the last valid struct pollfd entry. (This means that there are actually 500 entries in the array which poll has to search... but note that the very first entry is the listening socket which will accept new connections from clients - since that one is special and never gets any requests I don't include it in my log counts).
 
+IP2Location:
+-----------
 
+I'm using what ip2Location.com calls a "DB3" dataset.
 
+ip2location currently provides a reasonably competent ip dataset, updated the first of every month.
+
+I preprocess the IP-COUNTRY-REGION-CITY.CSV file that they provide using refine-csv.ijs. This is written in J (I used j version 803 - free from www.jsoftware.com). I used J because it's incredibly easy to experiment with and refactor. Now that I have this working, I might replace this step with a perl script, but honestly it's so easy as it is that I don't really care. It'll take maybe a minute or so to run, and the dataset gets updated only once a month and just pulling down a fresh copy looks like it's always going to involve some manual work.
+
+refine-csv.ijs generates three .csv files:
+
+* ip-country-state.csv - this is not used by the code, but is useful for thinking about what's being done here. It's a four column table where the first column is a "raw ip number", the second column is a country code, the third column is a region name (what is called a "State" in the USA), and the fourth column is the USA postal abbreviation for the "state" (only when the country code is "US"). A raw ip number is a decimal value smaller than 2^32 which represents the ip address. For example, the ip address 1.2.3.4 becomes (((((1*256)+2)*256)+3)*256)+4 or 16909060. Each row in this table represents all ip addresses up to that value which were not covered by previous rows.
+
+* country-state.csv - this is the unique values from ip-country-state.ijs. The memory mapped file ip.map is a list of 2^32 different indexes into this table, with 0 for the first row, 1 for the second, and so on.
+
+* ip-nub.csv - this is what's used to generate the ip.map file. The first column is raw ip numbers just like ip-country-state.csv while the second column is indexes into the country-state.csv file.
+
+Once these are generated, buildmap reads in the ip-nub.csv file and generates the ip.map file.
+
+Note that ip.map is highly compressible. The file is 8GB but bzip2 compresses it down to about 6MB (gzip compresses it down to about 15MB). The file needs to be uncompressed on the server, but I put a compressed copy on s3 (along with the sources for the server), so that it's readily available when I need it. (Licensing prevents me from placing ip.map on github in a publically readable fashion, and we are already managing s3 keys for other purposes.)
