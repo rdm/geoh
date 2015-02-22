@@ -1,4 +1,2 @@
 #!/bin/sh
-set -e
-ulimit -n 5000
 exec ./main
