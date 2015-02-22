@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -24,17 +25,31 @@ enum state { LISTENING, READING, WRITING };
 
 struct workfd {
 	enum state curstate;
-	struct sockaddr_storage addr;
 	int len;
 	char *resp;
 	int roff;
 	int rlen;
+	enum {GOOD, NEUTRAL, BAD} isok;
 	int pipe;
+	double expire;
+	struct sockaddr_storage addr;
 	char buf[4096];
 };
 
 struct pollfd* pollfds;
 struct workfd* workfds;
+
+time_t tzero, tnow;
+double now, then, atime;
+int active;
+long ngood, nbad, tgood, tbad;
+
+double gettime() {
+	struct timeval tv;
+	if (-1==gettimeofday(&tv, NULL)) perror("gettimeofday");
+	tnow= tv.tv_sec;
+	return (tv.tv_sec-tzero)+0.000001*tv.tv_usec;
+}
 
 #define str(x) {x, sizeof x}
 struct string {
@@ -63,11 +78,21 @@ struct string good[][2]= {
 #include "good.h"
 };
 
+int setpipe(int ndx, char buf[4096]) {
+	buf[4095]= 0;
+	if (!strcasestr(buf, "Connection: keep-alive")) return 0;
+	workfds[ndx].pipe= 1;
+	workfds[ndx].expire= then;
+	return 1;
+}
+
 int setcontent(int ndx, int rndx) {
 	if (0>rndx) {
+		workfds[ndx].isok= BAD;
 		workfds[ndx].resp= bad[1+rndx].text;
 		workfds[ndx].rlen= bad[1+rndx].len;
 	} else {
+		workfds[ndx].isok= GOOD;
 		int pipe= workfds[ndx].pipe;
 		workfds[ndx].resp= good[rndx][pipe].text;
 		workfds[ndx].rlen= good[rndx][pipe].len;
@@ -95,9 +120,21 @@ int lookup(char *buf) {
 	return ipmap[256*(256*(256*byte0+byte1)+byte2)+byte3];
 }
 
-int handlefd(int ndx, int*n, int max){
+int closefd(int ndx) {
+	close(pollfds[ndx].fd);
+	pollfds[ndx].fd= -1;
+	pollfds[ndx].revents= 0;
+	switch (workfds[ndx].isok) {
+		case GOOD: ngood++, tgood++; break;
+		case NEUTRAL: break; /* pipeline between requests */
+		case BAD: nbad++, tbad++; break;
+	}
+	return 0;
+}
+
+int handlefd(int ndx, int*n, int max) {
 	char *buf;
-	int j, k, end, len, off, siz, sta;
+	int j, k, end, len, nlcount, off, siz;
 	switch (workfds[ndx].curstate) {
 		case LISTENING:
 			siz= *n;
@@ -120,7 +157,9 @@ int handlefd(int ndx, int*n, int max){
 					pollfds[k].revents= 0;
 					workfds[k].curstate= READING;
 					workfds[k].len= 0;
+					workfds[k].isok= BAD;
 					workfds[k].pipe= 0;
+					workfds[k].expire= then;
 					if (k>=*n) *n=k+1;
 				}
 			}
@@ -131,22 +170,22 @@ int handlefd(int ndx, int*n, int max){
 			siz= read(pollfds[ndx].fd, workfds[ndx].buf+len, 4095-len);
 			if (1>siz) {
 				if (-1==siz) perror("read"); /* FIXME: decorate with more detail? */
-				close(pollfds[ndx].fd);
-				pollfds[ndx].fd= -1;
-				pollfds[ndx].revents= 0;
+				closefd(ndx);
 				return READING;
 			}
 			end= workfds[ndx].len+= siz;
-			off= len-(0==len ?0 :1); /* want len-(0==len) but can't find standards language guaranteeing from == is in {1,0} */
+			off= len-2; /* hypothetically speaking, \r\n\r could have already been read */
+			if (0>off) off= 0;
 			buf= workfds[ndx].buf;
-			for (j= off, sta= 0; j<end; j++) {
+			for (j= off, nlcount= 0; j<end; j++) { /* http requests terminated by blank line */
 				if ('\n' == buf[j]) {
-					sta++;
+					nlcount++;
 				} else {
-					if ('\r'!=buf[j]) sta= 0;
+					if ('\r'!=buf[j]) nlcount= 0;
 				}
-				if (2==sta) {
+				if (2==nlcount) {
 					buf[end]= 0;
+					setpipe(ndx, buf);
 					setcontent(ndx, lookup(buf));
 					return READING;
 				}
@@ -159,10 +198,27 @@ int handlefd(int ndx, int*n, int max){
 			off= workfds[ndx].roff;
 			siz= write(pollfds[ndx].fd, workfds[ndx].resp+off, workfds[ndx].rlen-off);
 			if (1>siz || siz+off==workfds[ndx].rlen) {
-				if (-1==siz) perror("write"); /* FIXME: decorate with more detail? */
-				close(pollfds[ndx].fd);
-				pollfds[ndx].fd= -1;
-				pollfds[ndx].revents= 0;
+				if (-1==siz) {
+					perror("write"); /* FIXME: decorate with more detail? */
+					workfds[ndx].isok= BAD;
+					workfds[ndx].pipe= 0;
+				}
+				if (workfds[ndx].pipe) {
+					switch (workfds[ndx].isok) {
+						case GOOD: ngood++, tgood++; break;
+						case NEUTRAL: break;
+						case BAD: nbad++, tbad++; break;
+					}
+					pollfds[ndx].events= POLLIN;
+					pollfds[ndx].revents= 0;
+					workfds[ndx].curstate= READING;
+					workfds[ndx].len= 0;
+					workfds[ndx].isok= NEUTRAL;
+					workfds[ndx].expire= then;
+				
+				} else {
+					closefd(ndx);
+				}
 				return WRITING;
 			}
 			workfds[ndx].roff+= siz;
@@ -170,7 +226,7 @@ int handlefd(int ndx, int*n, int max){
 	}
 }
 
-int serve(int listenfd){
+int serve(int listenfd) {
 	int maxfds= 1024;
 	int curfds= 1;
 	int newlim;
@@ -179,15 +235,30 @@ int serve(int listenfd){
 	pollfds[0].fd= listenfd;
 	pollfds[0].events= POLLIN;
 	while (1) {
-		if (-1==poll(pollfds, curfds, 60*60*1000)) die("poll", 11);
+		if (-1==poll(pollfds, curfds, 11*1000)) die("poll", 11);
+		workfds[0].expire= then= 10+(now= gettime());
+		if (!active) atime= then;
 		int j;
 		for (j= newlim= 0; j<curfds; j++) {
 			if (pollfds[j].revents) {
+				active=1;
 				handlefd(j, &curfds, maxfds);
 			}
-			if (-1<pollfds[j].fd) newlim= j;
+			if (-1<pollfds[j].fd) {
+				if (now > workfds[j].expire) {
+					closefd(j);
+				} else {
+					newlim= j;
+				}
+			}
 		}
 		curfds= newlim+1;
+		if (active && now > atime) {
+			char *when= ctime(&tnow);
+			if (!when) when="Clock is broken...........";
+			printf("%.24s: new good: %ld, new bad: %ld, pending %d, tot good: %ld, tot bad: %ld\n", when, ngood, nbad, newlim, tgood, tbad);
+			active= ngood= nbad= 0;
+		}
 	}
 }
 
@@ -218,6 +289,7 @@ int main(){
                 if (-1!=setuid(0)) die("regained root", 10);
         }
         printf("listening on port %d\n", ntohs(listenaddr_in.sin_port));
+	tzero= (long)gettime();
 	serve(s);
 	exit(0);
 }
