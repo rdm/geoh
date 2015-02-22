@@ -10,7 +10,15 @@ In my current job, geo lookup has turned into a major bottleneck for the systems
 
 So this is intended to replace the geo lookup http server, and the design is supposed to be efficient for high volume geo lookups.
 
-Note that you can deploy many instances of this server on the same machine (to take advantages of otherwise unused cpus and memory). You can also deploy this on many machines if you use a load balancing front-end (but I have not managed to generate a load high enough to determine whether a load balancer is efficient enough for the multiple-machine approach to be useful).
+Note that you can deploy many instances of this server on the same machine (to take advantages of otherwise unused cpus and memory). To do this, using djb's supervise: create one directory for each virtual instance, and place in each a run script which hands control over to the real instance. For example:
+
+    /supervise/geoh/ # the "concrete" instance
+    /supervice/geoh01/run # A virtual instance, this 'run' looks like:
+
+> #!/bin/sh
+> exec /supervise/geoh/run
+
+You can also deploy this on many machines if you use a load balancing front-end (but I have not managed to generate a load high enough to determine whether a load balancer is efficient enough for the multiple-machine approach to be useful).
 
 Use:
 ---
@@ -21,6 +29,7 @@ make; ./main
 
 For production, use http://cr.yp.to/daemontools.html, and:
 
+* edit run, fixing definition for key
 * chmod 4755 main
 * then supervise the containing directory (see daemontool docs)
 
