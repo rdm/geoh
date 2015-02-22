@@ -268,7 +268,9 @@ int serve(int listenfd) {
 			char when[]= "Clock is broken.............";
 			ctime_r(&tnow, when);
 			if (*badreq) fprintf(stderr, "%s\n", badreq);
+			fflush(stderr);
 			printf("%.24s: NEW good: %ld, empty: %ld, bad: %ld, PENDING %d/%d, TOTAL good: %ld, empty: %ld, bad: %ld\n", when, ngood, nempty, nbad, pending, newlim, tgood, tempty, tbad);
+			fflush(stdout);
 			badreq[0]= active= ngood= nempty= nbad= 0;
 		}
 	}
@@ -298,7 +300,6 @@ int main(int c, char**v){
 		key= v[1];
 	}
 	printf("Using key: %s\n", key);
-	fflush(stdout);
 	int mapf= open("ip.map", O_RDONLY);
 	if (-1 == mapf) die("open", 1);
 	ipmap= mmap(NULL, 8589934592, PROT_READ, MAP_PRIVATE, mapf, 0);
@@ -319,6 +320,7 @@ int main(int c, char**v){
                 if (-1!=setuid(0)) die("regained root", 10);
         }
         printf("listening on port %d\n", ntohs(listenaddr_in.sin_port));
+	fflush(stdout);
 	tzero= (long)gettime();
 	serve(s);
 	exit(0);
