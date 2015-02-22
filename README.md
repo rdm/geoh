@@ -13,7 +13,24 @@ So this is intended to replace the geo lookup http server, and the design is sup
 Note that you can deploy many instances of this server on the same machine (to take advantages of otherwise unused cpus and memory). To do this, using djb's supervise: create one directory for each virtual instance, and place in each a run script which hands control over to the real instance. For example:
 
     /supervise/geoh/ # the "concrete" instance
-    /supervice/geoh01/run # A virtual instance, this 'run' looks like:
+    /supervice/geoh01/run # A virtual instance
+    /supervice/geoh02/run # A virtual instance
+    /supervice/geoh03/run # A virtual instance
+    /supervice/geoh04/run # A virtual instance
+    /supervice/geoh05/run # A virtual instance
+    /supervice/geoh06/run # A virtual instance
+    /supervice/geoh07/run # A virtual instance
+    /supervice/geoh08/run # A virtual instance
+    /supervice/geoh09/run # A virtual instance
+    /supervice/geoh10/run # A virtual instance
+    /supervice/geoh11/run # A virtual instance
+    /supervice/geoh12/run # A virtual instance
+    /supervice/geoh13/run # A virtual instance
+    /supervice/geoh14/run # A virtual instance
+    /supervice/geoh15/run # A virtual instance
+    /supervice/geoh16/run # A virtual instance
+
+For this example, the executable (```chmod 755 run```) run scripts in the virtual instances would all look like this:
 
 ```sh
 #!/bin/sh
