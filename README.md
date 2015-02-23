@@ -65,11 +65,10 @@ make
 sudo chown root main
 sudo chmod r+s main
 sudo mv main geoh
-echo restarting server instances
-for pid in $(pgrep geoh); do
-	sudo kill $pid 
-	sleep 1;
-done
+sudo svc -t /service/geoh*
+sleep 1
+sudo svstat /service/geoh*
+echo $(pgrep geoh | wc -l) running server instances
 ```
 
 (You'll want to run make and run main from the command line and run a test against it before doing this.)
