@@ -15,10 +15,14 @@ ip-nub.csv: ip2location/IP-COUNTRY-REGION-CITY.CSV
 ip.map: buildmap country-state.csv ip-nub.csv
 	./buildmap
 
-ip.map.gz: ip.map
-	gzip -9c <ip.map >t.gz
+ip.map.gz: ip.map.new
+	gzip -9c <ip.map.new >t.gz
 	mv t.gz ip.map.gz
 
-ip.map.bz2: ip.map
+ip.map.bz2: ip.map.new
 	bzip -c <ip.map >t.bz2
 	mv t.bz2 ip.map.bz2
+
+ip.map: ip.map.bz2
+	bzip -dc <ip.map.bz2 >t.bz2
+	mv t.bz2 ip.map

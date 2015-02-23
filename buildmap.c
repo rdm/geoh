@@ -32,8 +32,8 @@ int extract(char *buf, long *addr, short *ndx) {
 int main(){
 	FILE*ipnub= fopen("ip-nub.csv","r");
 	if (!ipnub) die("fopen ip-nub.csv",1);
-	FILE*ipmap= fopen("ip.map","w");
-	if (!ipmap) die("fopen ip.map",2);
+	FILE*ipmap= fopen("ip.map.new","w");
+	if (!ipmap) die("fopen ip.map.new",2);
 	long ip, lastip;
 	short nub;
 	char buf[256];
@@ -43,8 +43,8 @@ int main(){
 			extract(buf, &lastip, &nub);
 		}
 		/* little-endian */
-		if (EOF==putc(255&nub, ipmap)) die("putc to ip.map", 7);
-		if (EOF==putc(nub>>8, ipmap)) die("putc to ip.map", 8);
+		if (EOF==putc(255&nub, ipmap)) die("putc to ip.map.new", 7);
+		if (EOF==putc(nub>>8, ipmap)) die("putc to ip.map.new", 8);
 	}
 	exit(0);
 }
