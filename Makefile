@@ -1,10 +1,10 @@
-main: main.c good.h
+main: main.c good.h timeout.h
 	cc $@.c -o $@
 
 all: main ip.map.bz2 ip.map.gz
 	./deploy
 
-good.h: buildresponse country-state.csv 
+good.h: buildresponse country-state.csv timeout.h
 	./buildresponse country-state.csv >$@
 
 buildmap:
@@ -12,7 +12,7 @@ buildmap:
 ip-nub.csv: ip2location/IP-COUNTRY-REGION-CITY.CSV
 	jconsole refine-csv.ijs
 
-ip.map: buildmap country-state.csv ip-nub.csv
+ip.map.new: buildmap country-state.csv ip-nub.csv
 	./buildmap
 
 ip.map.gz: ip.map.new

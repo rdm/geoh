@@ -56,6 +56,24 @@ This particular script needs an additional directory at /service/geoh*/log/main/
 
 Note that svscan likes the machine to be rebooted after major changes. 
 
+Once this is in place, deploying an update to production looks something like this:
+
+```sh
+#!/bin/sh
+set -e
+make
+sudo chown root main
+sudo chmod r+s main
+sudo mv main geoh
+echo restarting server instances
+for pid in $(pgrep geoh); do
+	sudo kill $pid 
+	sleep 1;
+done
+```
+
+(You'll want to run make and run main from the command line and run a test against it before doing this.)
+
 Hypothetically speaking, you could deploy this server on many machines if you use a load balancing front-end (but I have not managed to generate a load high enough to determine whether a load balancer is efficient enough for the multiple-machine approach to be useful).
 
 Use:
