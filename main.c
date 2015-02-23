@@ -309,6 +309,7 @@ int main(int c, char**v){
 	int optval= 1;
 	if (setsockopt(s, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof optval)) die("setsockopt", 4);
 	if (-1==fcntl(s, F_SETFL, O_NONBLOCK)) die("fcntl", 5);
+	setuid(0); /* this will succeed if we can become root */
 	if (0==getuid()) {
                 listenaddr_in.sin_port= htons(80);
         }

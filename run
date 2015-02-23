@@ -1,3 +1,4 @@
 #!/bin/sh
+# notional example - see README.md
 key=$RANDOM # FIXME: replace with actual key
 exec ./main $key
