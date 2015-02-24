@@ -176,6 +176,9 @@ int startwriting(int ndx, char *response, int responselen, char *callback, int c
 }
 
 int donotdothat(int ndx) {
+	if (!*badreq) {
+		memcpy(badreq, workfds[ndx].buf, workfds[ndx].len);
+	}
 	return startwriting(ndx, NULL, 0, NULL, 0);
 }
 
@@ -281,6 +284,7 @@ int handlefd(int ndx, int*n, int max) {
 			off= len-2; /* hypothetically speaking, \r\n\r could have already been read */
 			if (0>off) off= 0;
 			buf= workfds[ndx].buf;
+			if (!*buf) return donotdothat(ndx);
 			for (j= off, nlcount= 0; j<end; j++) { /* http requests terminated by blank line */
 				if ('\n' == buf[j]) {
 					nlcount++;
