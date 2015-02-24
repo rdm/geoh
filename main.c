@@ -178,6 +178,7 @@ int startwriting(int ndx, char *response, int responselen, char *callback, int c
 int donotdothat(int ndx) {
 	if (!*badreq) {
 		memcpy(badreq, workfds[ndx].buf, workfds[ndx].len);
+		badreq[workfds[ndx].len]= 0;
 	}
 	return startwriting(ndx, NULL, 0, NULL, 0);
 }
