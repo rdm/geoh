@@ -50,7 +50,7 @@ time_t tzero, tnow;
 double now, then, atime;
 int active;
 long ngood, nempty, nbad, tgood, tempty, tbad;
-char badreq[4096];
+char badreq[4100];
 
 double gettime() {
 	struct timeval tv;
