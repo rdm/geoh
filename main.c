@@ -221,6 +221,12 @@ int lookuplocal(int ndx, char*callback, int callbacklen) {
 	}
 	if (!forwarded) {
 		addr= ntohl(((struct sockaddr_in *)&(workfds[ndx].addr))->sin_addr.s_addr);
+		if (!addr) {
+			/* wtf? */
+			socklen_t ignore;
+			getsockname(pollfds[ndx].fd, (struct sockaddr*)&(workfds[ndx].addr), &ignore);
+			addr= ntohl(((struct sockaddr_in *)&(workfds[ndx].addr))->sin_addr.s_addr);
+		}
 	}
 	short loc= ipmap[addr];
 	buf= appendtxt(buf, localdata[loc].part1.text, localdata[loc].part1.len);
@@ -271,13 +277,6 @@ int handlefd(int ndx, int*n, int max) {
 			if (k < max) {
 				socklen_t ignore;
 				int fd= accept(pollfds[ndx].fd, (struct sockaddr*)&(workfds[k].addr), &ignore);
-				/* EC2 Linux is too unreliable for this:
-				unsigned int addr= ntohl(((struct sockaddr_in *)&(workfds[k].addr))->sin_addr.s_addr);
-				if (0 == addr) {
-					close(fd);
-					return 0;
-				}
-				*/
 				if (-1==fd) {
 					perror("accept");
 					fflush(stderr);
