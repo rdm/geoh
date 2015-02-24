@@ -199,7 +199,7 @@ int initwordforming() {
 
 int lookuplocal(int ndx, char*callback, int callbacklen) {
 	char body[2048];
-	unsigned int addr= ((struct sockaddr_in *)&(workfds[ndx].addr))->sin_addr.s_addr;
+	unsigned int addr= ntohl(((struct sockaddr_in *)&(workfds[ndx].addr))->sin_addr.s_addr);
 	char *buf= body;
 	short loc= ipmap[addr];
 	buf= appendtxt(buf, localdata[loc].part1.text, localdata[loc].part1.len);
