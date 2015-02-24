@@ -197,10 +197,31 @@ int initwordforming() {
 	return 0;
 }
 
+long txt2rawip(char *parse) {
+	long byte0= strtol(parse, &parse, 10);
+	if (byte0<0||byte0>255||'.'!=*parse++) return -1;
+	long byte1= strtol(parse, &parse, 10);
+	if (byte1<0||byte1>255||'.'!=*parse++) return -1;
+	long byte2= strtol(parse, &parse, 10);
+	if (byte2<0||byte2>255||'.'!=*parse++) return -1;
+	long byte3= strtol(parse, &parse, 10);
+	if (byte3<0||byte3>255) return -1;
+	return 256*(256*(256*byte0+byte1)+byte2)+byte3;
+}
+
 int lookuplocal(int ndx, char*callback, int callbacklen) {
 	char body[2048];
-	unsigned int addr= ntohl(((struct sockaddr_in *)&(workfds[ndx].addr))->sin_addr.s_addr);
 	char *buf= body;
+	char *forwarded= strstr(workfds[ndx].buf, "X-Forwarded-For: ");
+	unsigned long addr;
+	if (forwarded) {
+		forwarded+= LENGTHOF("X-Forwarded-For: ");
+		addr= txt2rawip(forwarded);
+		if (-1==addr) forwarded=NULL;
+	}
+	if (!forwarded) {
+		addr= ntohl(((struct sockaddr_in *)&(workfds[ndx].addr))->sin_addr.s_addr);
+	}
 	short loc= ipmap[addr];
 	buf= appendtxt(buf, localdata[loc].part1.text, localdata[loc].part1.len);
 	buf= appendint(buf, addr>>24);
@@ -215,15 +236,9 @@ int lookuplocal(int ndx, char*callback, int callbacklen) {
 }
 
 int lookupref(int ndx, char *parse, char*callback, int callbacklen) {
-	long byte0= strtol(parse, &parse, 10);
-	if (byte0<0||byte0>255||'.'!=*parse++) return donotdothat(ndx);
-	long byte1= strtol(parse, &parse, 10);
-	if (byte1<0||byte1>255||'.'!=*parse++) return donotdothat(ndx);
-	long byte2= strtol(parse, &parse, 10);
-	if (byte2<0||byte2>255||'.'!=*parse++) return donotdothat(ndx);
-	long byte3= strtol(parse, &parse, 10);
-	if (byte3<0||byte3>255) return donotdothat(ndx);
-	short loc= ipmap[256*(256*(256*byte0+byte1)+byte2)+byte3];
+	long rawip= txt2rawip(parse);
+	if (-1==rawip) return donotdothat(ndx);
+	short loc= ipmap[rawip];
 	return startwriting(ndx, refdata[loc].text, refdata[loc].len, callback, callbacklen);
 }
 
