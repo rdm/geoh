@@ -1,0 +1,19 @@
+#!/usr/bin/perl -n
+
+use POSIX qw(strftime);
+
+BEGIN{
+	my $cmd= '{print $3}';
+	$timeout= `awk '$cmd' timeout.h`;
+	chomp $timeout;
+}
+
+chomp;
+s/"//g;
+
+($cc,$rn,$rc)= split ',';
+
+$lit= qq/{"s":{"sc":"OK"},"d":{"cc":"$cc","rc":"$rc","rn":"$rn"}}/;
+$lit=~s/"/\\"/g;
+
+print qq/str("$lit"),\n/;

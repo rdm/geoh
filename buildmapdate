@@ -1,0 +1,8 @@
+#!/usr/bin/perl
+
+use POSIX qw(strftime);
+
+$date= strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime(time()));
+open MAPDATE, ">mapdate.h" or die $!;
+print MAPDATE qq{#define IPMAPPREPDATE "$date"\n};
+close MAPDATE;

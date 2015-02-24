@@ -1,4 +1,5 @@
 #include <arpa/nameser.h>
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -16,6 +17,7 @@
 #include <resolv.h>
 
 #include "timeout.h"
+#include "mapdate.h"
 
 char * key;
 
@@ -56,78 +58,168 @@ double gettime() {
 	return (tv.tv_sec-tzero)+0.000001*tv.tv_usec;
 }
 
-#define str(x) {x, sizeof x}
+#define LENGTHOF(x) ((sizeof x)-1)
+#define str(x) {x, LENGTHOF(x)}
 struct string {
 	char *text;
 	int len;
 };
 
-struct string bad[]= {
-str("HTTP/1.0 403 Forbidden\n\
-Content-Type: text/html\n\
-Connection: close\n\
-\n\
-<?xml verion=\"1.0\" encoding=\"iso-8859-1\"?>\n\
-<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\"\n\
-         \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n\
-<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">\n\
-        <head>\n\
-                <title>403 - Forbidden</title>\n\
-        </head>\n\
-        <body>\n\
-                <h1>403 - Forbidden</h1>\n\
-        </body>\n\
-</html>\n")
-};
-struct string good[][2]= {
-#include "good.h"
+struct string bad= str("HTTP/1.0 403 Forbidden\r\n\
+Content-Type: text/html\r\n\
+Connection: close\r\n\
+\r\n\
+<?xml verion=\"1.0\" encoding=\"iso-8859-1\"?>\r\n\
+<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\"\r\n\
+         \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\r\n\
+<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">\r\n\
+        <head>\r\n\
+                <title>403 - Forbidden</title>\r\n\
+        </head>\r\n\
+        <body>\r\n\
+                <h1>403 - Forbidden</h1>\r\n\
+        </body>\r\n\
+</html>\r\n");
+
+struct string goodhead= str("HTTP/1.1 200 OK\r\n\
+Content-Type: application/json;charset=utf-8\r\n\
+Date: " IPMAPPREPDATE "\r\n\
+Content-Length: ");
+
+struct string goodcont= str("\r\nConnection: ");
+
+struct string refdata[]= {
+#include "refdata.h"
 };
 
-int setpipe(int ndx, char buf[4096]) {
-	if (!strcasestr(buf, "Connection: keep-alive")) return 0;
-	workfds[ndx].pipe= 1;
+struct {
+	struct string part1;
+	struct string part2;
+} localdata[]= {
+#include "localdata.h"
+};
+
+int checkconnectiontype(int ndx, char buf[4096]) {
 	workfds[ndx].expire= then;
-	return 1;
+	workfds[ndx].pipe= strcasestr(buf, "Connection: keep-alive") ?1 :0;
+	return strstr(workfds[ndx].buf, key) ?1 :0;
 }
 
-int setcontent(int ndx, int rndx) {
-	if (!strstr(workfds[ndx].buf, key)) rndx=-1;
-	if (0>rndx) {
-		if (!*badreq) {
-			strncpy(badreq, workfds[ndx].buf, workfds[ndx].len);
-			badreq[workfds[ndx].len]= 0;
-		}
-		workfds[ndx].isok= BAD;
-		workfds[ndx].resp= bad[1+rndx].text;
-		workfds[ndx].rlen= bad[1+rndx].len;
-		workfds[ndx].pipe= 0;
-	} else {
-		workfds[ndx].isok= GOOD;
-		int pipe= workfds[ndx].pipe;
-		workfds[ndx].resp= good[rndx][pipe].text;
-		workfds[ndx].rlen= good[rndx][pipe].len;
-	}
-	pollfds[ndx].events= POLLOUT;
-	workfds[ndx].roff= 0;
+char *appendtxt(char *dst, char *src, int len) {
+	memcpy(dst, src, len);
+	return dst+len;
+}
+
+#define PLENTY (8*sizeof (int))
+char *appendint(char *buf, unsigned int n) {
+	char scratch[PLENTY]; /* more than enough space */
+	char *p, *q= scratch+PLENTY-1;
+	int len;
+	p= q;
+	do {
+		*p--= '0'+n%10;
+		n/= 10;
+	} while (n);
+	len= q-p;
+	return appendtxt(buf, ++p, len);
+}
+
+#define STRINGIFY(x) #x
+
+int startwriting(int ndx, char *response, int responselen, char *callback, int callbacklen) {
 	workfds[ndx].curstate= WRITING;
+	workfds[ndx].roff= 0;
+	pollfds[ndx].events= POLLOUT;
+	if (response && responselen<3072) {
+		char *connection;
+		int connectlen;
+		int bodylen= responselen+(callback ?callbacklen+LENGTHOF("();\n") :LENGTHOF("\n"));
+		if (workfds[ndx].pipe) {
+			connection= "Keep-Alive\nKeep-Alive: timeout=" STRINGIFY(TIMEOUT);
+			connectlen= LENGTHOF("Keep-Alive\nKeep-Alive: timeout=" STRINGIFY(TIMEOUT));
+		} else {
+			connection= "Close";
+			connectlen= LENGTHOF("Close");
+		}
+		char *start= workfds[ndx].buf;
+		char *buf= start;
+		buf= appendtxt(buf, goodhead.text, goodhead.len);
+		buf= appendint(buf, bodylen);
+		buf= appendtxt(buf, goodcont.text, goodcont.len);
+		buf= appendtxt(buf, connection, connectlen);
+		*buf++= '\r';
+		*buf++= '\n';
+		*buf++= '\r';
+		*buf++= '\n';
+		if (callback) {
+			buf= appendtxt(buf, callback, callbacklen);
+			*buf++= '(';
+			buf= appendtxt(buf, response, responselen);
+			*buf++= ')';
+			*buf++= ';';
+			*buf++= '\n';
+		} else {
+			buf= appendtxt(buf, response, responselen);
+			*buf++= '\n';
+		}
+		workfds[ndx].isok= GOOD;
+		workfds[ndx].resp= start;
+		workfds[ndx].rlen= buf-start;
+		return 1;
+	}
+	workfds[ndx].isok= BAD;
+	workfds[ndx].resp= bad.text;
+	workfds[ndx].rlen= bad.len;
+	workfds[ndx].pipe= 0;
 	return 0;
+}
+
+int donotdothat(int ndx) {
+	return startwriting(ndx, NULL, 0, NULL, 0);
 }
 
 short *ipmap;
 
-int lookup(char *buf) {
-	char *parse= strstr(buf, "ip=");
-	if (!parse) return -1;
-	parse+=3;
+int iswordforming[256];
+
+int initwordforming() {
+	int j;
+	for (j= 0; j<256; j++) {
+		if (isalnum(j) || '_' == j || '$' == j) {
+			iswordforming[j]= 1;
+		}
+	}
+	return 0;
+}
+
+int lookuplocal(int ndx, char*callback, int callbacklen) {
+	char body[2048];
+	unsigned int addr= ((struct sockaddr_in *)&(workfds[ndx].addr))->sin_addr.s_addr;
+	char *buf= body;
+	short loc= ipmap[addr];
+	buf= appendtxt(buf, localdata[loc].part1.text, localdata[loc].part1.len);
+	buf= appendint(buf, addr>>24);
+	*buf++= '.';
+	buf= appendint(buf, 0xff&(addr>>16));
+	*buf++= '.';
+	buf= appendint(buf, 0xff&(addr>>8));
+	*buf++= '.';
+	buf= appendint(buf, 0xff&addr);
+	buf= appendtxt(buf, localdata[loc].part2.text, localdata[loc].part2.len);
+	return startwriting(ndx, body, buf-body, callback, callbacklen);
+}
+
+int lookupref(int ndx, char *parse, char*callback, int callbacklen) {
 	long byte0= strtol(parse, &parse, 10);
-	if (byte0<0||byte0>255||'.'!=*parse++) return -1;
+	if (byte0<0||byte0>255||'.'!=*parse++) return donotdothat(ndx);
 	long byte1= strtol(parse, &parse, 10);
-	if (byte1<0||byte1>255||'.'!=*parse++) return -1;
+	if (byte1<0||byte1>255||'.'!=*parse++) return donotdothat(ndx);
 	long byte2= strtol(parse, &parse, 10);
-	if (byte2<0||byte2>255||'.'!=*parse++) return -1;
+	if (byte2<0||byte2>255||'.'!=*parse++) return donotdothat(ndx);
 	long byte3= strtol(parse, &parse, 10);
-	if (byte3<0||byte3>255) return -1;
-	return ipmap[256*(256*(256*byte0+byte1)+byte2)+byte3];
+	if (byte3<0||byte3>255) return donotdothat(ndx);
+	short loc= ipmap[256*(256*(256*byte0+byte1)+byte2)+byte3];
+	return startwriting(ndx, refdata[loc].text, refdata[loc].len, callback, callbacklen);
 }
 
 int closefd(int ndx) {
@@ -196,13 +288,41 @@ int handlefd(int ndx, int*n, int max) {
 				}
 				if (2==nlcount) {
 					buf[end]= 0;
-					setpipe(ndx, buf);
-					setcontent(ndx, lookup(buf));
-					return READING;
+					if (!checkconnectiontype(ndx, buf)) {
+						donotdothat(ndx);
+					} else {
+						char *parse= strstr(buf, "ip=");
+						if (!parse) {
+							donotdothat(ndx);
+						} else {
+							char cbuf[256];
+							char *buf= cbuf;
+							char *cb= strstr(workfds[ndx].buf, "callback=");
+							int clen;
+							if (cb) {
+								int j;
+								for (j= 255, cb+=LENGTHOF("callback="); j&&iswordforming[*cb]; j--) {
+									*buf++= *cb++;
+								}
+								clen= buf-cbuf;
+								buf= cbuf;
+							} else {
+								clen= 0;
+								buf= NULL;
+							}
+							parse+=LENGTHOF("ip=");
+							if ('l'==*parse) {
+								lookuplocal(ndx, buf, clen);
+							} else {
+								lookupref(ndx, parse, buf, clen);
+							}
+						}
+					}
+					return WRITING;
 				}
 			}
 			if (4096==end) {
-				setcontent(ndx, -1);
+				donotdothat(ndx);
 			}
 			return READING;
 		case WRITING:
@@ -294,7 +414,7 @@ int main(int c, char**v){
 		srandomdev();
 #endif
 		for (j= 0; j<6; j++) {
-			testkey[j]= choice[random()%sizeof choice];
+			testkey[j]= choice[random()%LENGTHOF(choice)];
 		}
 		testkey[6]= 0;
 		key= testkey;
@@ -322,6 +442,7 @@ int main(int c, char**v){
                 if (setuid(33/*www-data*/)) die("setuid", 9);
                 if (-1!=setuid(0)) die("regained root", 10);
         }
+	initwordforming();
         printf("listening on port %d\n", ntohs(listenaddr_in.sin_port));
 	fflush(stdout);
 	tzero= (long)gettime();

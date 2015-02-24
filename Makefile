@@ -1,13 +1,21 @@
-main: main.c good.h timeout.h
+main: main.c timeout.h mapdate.h refdata.h localdata.h
 	cc $@.c -o $@
 
 all: main ip.map.bz2 ip.map.gz
 	./deploy
 
-good.h: buildresponse country-state.csv timeout.h
-	./buildresponse country-state.csv >$@
+mapdate.h: buildmapdate
+	./$<
 
-buildmap:
+refdata.h: buildrefdata country-state.csv timeout.h
+	./buildrefdata country-state.csv >$@
+	grep US $@ >/dev/null || rm $@ $@
+
+localdata.h: buildlocaldata country-state.csv timeout.h
+	./buildlocaldata country-state.csv >$@
+	grep US $@ >/dev/null || rm $@ $@
+
+buildmap: buildmap.c
 
 ip-nub.csv: ip2location/IP-COUNTRY-REGION-CITY.CSV
 	jconsole refine-csv.ijs

@@ -1,0 +1,22 @@
+#!/usr/bin/perl -n
+
+use POSIX qw(strftime);
+
+BEGIN{
+	my $cmd= '{print $3}';
+	$timeout= `awk '$cmd' timeout.h`;
+	chomp $timeout;
+}
+
+chomp;
+s/"//g;
+
+($cc,$rn,$rc)= split ',';
+
+$lit1= qq/{"query_status":{"query_status_code":"OK","query_status_description":"Query successfully performed."},"ip_address":"/;
+$lit1=~s/"/\\"/g;
+
+$lit2= qq/","geolocation_data":{"country_code_iso3166alpha2":"$cc","region_code":"$rc","region_name":"$rn"}}/;
+$lit2=~s/"/\\"/g;
+
+print qq/{str("$lit1"),str("$lit2")},\n/;
