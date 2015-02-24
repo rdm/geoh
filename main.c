@@ -45,6 +45,7 @@ struct workfd {
 struct pollfd* pollfds;
 struct workfd* workfds;
 
+pid_t pid;
 time_t tzero, tnow;
 double now, then, atime;
 int active;
@@ -391,7 +392,7 @@ int serve(int listenfd) {
 			ctime_r(&tnow, when);
 			if (*badreq) fprintf(stderr, "%s\n", badreq);
 			fflush(stderr);
-			printf("%.24s: NEW good: %ld, empty: %ld, bad: %ld, PENDING %d/%d, TOTAL good: %ld, empty: %ld, bad: %ld\n", when, ngood, nempty, nbad, pending, newlim, tgood, tempty, tbad);
+			printf("%.24s: pid: %d -- NEW good: %ld, empty: %ld, bad: %ld, PENDING %d/%d, TOTAL good: %ld, empty: %ld, bad: %ld\n", when, pid, ngood, nempty, nbad, pending, newlim, tgood, tempty, tbad);
 			fflush(stdout);
 			badreq[0]= active= ngood= nempty= nbad= 0;
 		}
@@ -443,6 +444,7 @@ int main(int c, char**v){
                 if (-1!=setuid(0)) die("regained root", 10);
         }
 	initwordforming();
+	pid= getpid();
         printf("listening on port %d\n", ntohs(listenaddr_in.sin_port));
 	fflush(stdout);
 	tzero= (long)gettime();
