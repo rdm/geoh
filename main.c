@@ -256,6 +256,11 @@ int handlefd(int ndx, int*n, int max) {
 			if (k < max) {
 				socklen_t ignore;
 				int fd= accept(pollfds[ndx].fd, (struct sockaddr*)&(workfds[k].addr), &ignore);
+				unsigned int addr= ntohl(((struct sockaddr_in *)&(workfds[k].addr))->sin_addr.s_addr);
+				if (0 == addr) {
+					close(fd);
+					return 0;
+				}
 				if (-1==fd) {
 					perror("accept");
 					fflush(stderr);
