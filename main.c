@@ -285,12 +285,12 @@ int handlefd(int ndx, int*n, int max) {
 			off= len-2; /* hypothetically speaking, \r\n\r could have already been read */
 			if (0>off) off= 0;
 			buf= workfds[ndx].buf;
-			if (!*buf) return donotdothat(ndx);
 			for (j= off, nlcount= 0; j<end; j++) { /* http requests terminated by blank line */
 				if ('\n' == buf[j]) {
 					nlcount++;
 				} else {
 					if ('\r'!=buf[j]) nlcount= 0;
+					if (!buf[j]) return donotdothat(ndx);
 				}
 				if (2==nlcount) {
 					buf[end]= 0;
