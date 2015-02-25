@@ -221,8 +221,7 @@ int lookuplocal(int ndx, char*callback, int callbacklen) {
 	}
 	if (!forwarded) {
 		addr= ntohl(((struct sockaddr_in *)&(workfds[ndx].addr))->sin_addr.s_addr);
-		if (!addr) {
-			/* wtf? */
+		if (!addr) { /* wtf? */
 			socklen_t ignore;
 			getsockname(pollfds[ndx].fd, (struct sockaddr*)&(workfds[ndx].addr), &ignore);
 			addr= ntohl(((struct sockaddr_in *)&(workfds[ndx].addr))->sin_addr.s_addr);
@@ -471,7 +470,7 @@ int main(int c, char**v){
         }
 	initwordforming();
 	pid= getpid();
-        printf("listening on port %d\n", ntohs(listenaddr_in.sin_port));
+        printf("process %d listening on port %d\n", pid, ntohs(listenaddr_in.sin_port));
 	fflush(stdout);
 	tzero= (long)gettime();
 	serve(s);
