@@ -222,8 +222,8 @@ int lookuplocal(int ndx, char*callback, int callbacklen) {
 	if (!forwarded) {
 		addr= ntohl(((struct sockaddr_in *)&(workfds[ndx].addr))->sin_addr.s_addr);
 		if (!addr) { /* wtf? */
-			socklen_t ignore;
-			getsockname(pollfds[ndx].fd, (struct sockaddr*)&(workfds[ndx].addr), &ignore);
+			socklen_t addrlen= sizeof (struct sockaddr_storage);
+			getsockname(pollfds[ndx].fd, (struct sockaddr*)&(workfds[ndx].addr), &addrlen);
 			addr= ntohl(((struct sockaddr_in *)&(workfds[ndx].addr))->sin_addr.s_addr);
 		}
 	}
@@ -274,8 +274,8 @@ int handlefd(int ndx, int*n, int max) {
 			}
 			if (!k) k= siz;
 			if (k < max) {
-				socklen_t ignore;
-				int fd= accept(pollfds[ndx].fd, (struct sockaddr*)&(workfds[k].addr), &ignore);
+				socklen_t addrlen= sizeof (struct sockaddr_storage);
+				int fd= accept(pollfds[ndx].fd, (struct sockaddr*)&(workfds[k].addr), &addrlen);
 				if (-1==fd) {
 					perror("accept");
 					fflush(stderr);
