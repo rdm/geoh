@@ -86,7 +86,7 @@ I preprocess the IP-COUNTRY-REGION-CITY.CSV file that they provide using refine-
 
 refine-csv.ijs generates three .csv files:
 
-* ip-country-state.csv - this is not used by the code, but is useful for thinking about what's being done here. It's a four column table where the first column is a "raw ip number", the second column is a country code, the third column is a region name (what is called a "State" in the USA), and the fourth column is the USA postal abbreviation for the "state" (only when the country code is "US"). A raw ip number is a decimal value smaller than 2^32 which represents the ip address. For example, the ip address 1.2.3.4 becomes (((((1*256)+2)*256)+3)*256)+4 or 16909060. Each row in this table represents all ip addresses up to that value which were not covered by previous rows.
+* ip-country-state.csv - this is not used by the code, but is useful for thinking about what's being done here. It's a four column table where the first column is a "raw ip number", the second column is a country code, the third column is a region name (what is called a "State" in the USA), and the fourth column is the USA postal abbreviation for the "state" (only when the country code is "US"). A raw ip number is a decimal value smaller than 2^32 which represents the ip address. For example, the ip address 1.2.3.4 becomes (((((1\*256)+2)\*256)+3)\*256)+4 or 16909060. Each row in this table represents all ip addresses up to that value which were not covered by previous rows.
 
 * country-state.csv - this is the unique values from ip-country-state.ijs. The memory mapped file ip.map is a list of 2^32 different indexes into this table, with 0 for the first row, 1 for the second, and so on.
 

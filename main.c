@@ -221,11 +221,6 @@ int lookuplocal(int ndx, char*callback, int callbacklen) {
 	}
 	if (!forwarded) {
 		addr= ntohl(((struct sockaddr_in *)&(workfds[ndx].addr))->sin_addr.s_addr);
-		if (!addr) { /* wtf? */
-			socklen_t addrlen= sizeof (struct sockaddr_storage);
-			getsockname(pollfds[ndx].fd, (struct sockaddr*)&(workfds[ndx].addr), &addrlen);
-			addr= ntohl(((struct sockaddr_in *)&(workfds[ndx].addr))->sin_addr.s_addr);
-		}
 	}
 	short loc= ipmap[addr];
 	buf= appendtxt(buf, localdata[loc].part1.text, localdata[loc].part1.len);

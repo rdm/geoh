@@ -30,7 +30,7 @@ Note that you can deploy many instances of this server on the same machine (to t
     /service/geoh15/run       # A virtual instance
     /service/geoh16/run       # A virtual instance
 
-Note that if you are using ubuntu's implementation of daemontools you'll probably have to make adjustments which depend on the version of ubuntu which you are using. For example, in a current version of ubuntu the run script must be placed in /var/lib/supervise/geoh*/ and /etc/service/geoh* is meant to be a symbolic link to that directory.
+Note that if you are using ubuntu's implementation of daemontools you'll probably have to make adjustments which depend on the version of ubuntu which you are using. For example, in a current version of ubuntu the run script must be placed in /var/lib/supervise/geoh\*/ and /etc/service/geoh\* is meant to be a symbolic link to that directory.
 
 For this example, the executable (```chmod 755 run```) run scripts in the virtual instances would all look something like this:
 
@@ -44,7 +44,7 @@ exec /usr/local/src/start
 
 Of course, adjust the directory referenced here, based on where you have deployed the software.
 
-Additionally, for logging purposes, you'll probably want a directory at /service/geoh*/log/ which contains a run script something like this:
+Additionally, for logging purposes, you'll probably want a directory at /service/geoh\*/log/ which contains a run script something like this:
 
 ```sh
 #!/bin/sh
@@ -52,7 +52,7 @@ chdir $(dirname $0)
 exec setuidgid syslog multilog t ./main
 ```
 
-This particular script needs an additional directory at /service/geoh*/log/main/ which is owned by the syslog user.
+This particular script needs an additional directory at /service/geoh\*/log/main/ which is owned by the syslog user.
 
 Note that svscan likes the machine to be rebooted after major changes. 
 
