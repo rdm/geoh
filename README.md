@@ -54,7 +54,7 @@ exec setuidgid syslog multilog t ./main
 
 This particular script needs an additional directory at /service/geoh\*/log/main/ which is owned by the syslog user.
 
-Note that svscan likes the machine to be rebooted after major changes. 
+Note that svscan likes the machine to be rebooted after major changes. (For example: it's better to start svcscan on boot than from the command line.)
 
 Once this is in place, deploying an update to production looks something like this:
 
