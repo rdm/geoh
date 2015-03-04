@@ -3,7 +3,7 @@ main: main.c timeout.h mapdate.h refdata.h localdata.h
 
 distribute: main ip.map.bz2 ip.map.gz distribute.sh
 	./distribute.sh
-	. $HOME/.ssh-agent.sh && ssh -v ubuntu@ubuntu@54.204.234.199 sh deployprod
+	. $$HOME/.ssh-agent.sh && ssh -v ubuntu@ubuntu@54.204.234.199 sh deployprod
 
 mapdate.h: buildmapdate
 	./$<
