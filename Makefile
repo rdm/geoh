@@ -17,8 +17,21 @@ localdata.h: buildlocaldata country-state.csv timeout.h
 
 buildmap: buildmap.c
 
-ip-nub.csv: ip2location/IP-COUNTRY-REGION-CITY.CSV
-	jconsole refine-csv.ijs
+# at the begining of each month
+# download DB3-IP-COUNTRY-REGION-CITY.CSV.ZIP
+# from https://www.ip2location.com/file-download
+ip2location/IP-COUNTRY-REGION-CITY.CSV: ip2location/DB3-IP-COUNTRY-REGION-CITY.CSV.ZIP
+	cd ip2location && unzip -o DB3-IP-COUNTRY-REGION-CITY.CSV.ZIP
+
+ip-country-state.csv: ip2location/IP-COUNTRY-REGION-CITY.CSV
+	perl refine-csv.pl
+	mv ip-country-state.csv.tmp ip-country-state.csv
+
+ip-nub.csv: ip-nub.csv.tmp ip-country-state.csv
+	mv $@.tmp $@
+
+country-state.csv: country-state.csv.tmp ip-country-state.csv
+	mv $@.tmp $@
 
 ip.map.new: buildmap country-state.csv ip-nub.csv
 	./buildmap
