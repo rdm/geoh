@@ -1,20 +1,16 @@
 #!/bin/sh
-set -vex
+set -e
 
-set $(git ls-tree -r master --name-only | fgrep -v git | sed 's}/.*}}') ip.map.{gz,bz2} 
+set $(git ls-tree -r master --name-only | fgrep -v git') ip.map.{gz,bz2} 
 
 echo "$@"
 
 . ~/.ssh-agent.sh
-scp -vri "./$@" ubuntu@54.204.234.199:src/. &
+scp -vri "$@" ubuntu@54.204.234.199:src/. &
 
 for f in "$@"; do
-	aws s3 cp "./$f" s3://databus-dev/geo/$f;
+	aws s3 cp "$f" s3://databus-dev/geo/$f;
 done &
 
 git push
 wait
-
-for f in "$@"; do
-	echo ">>$f<<"
-done
