@@ -41,7 +41,7 @@ ip.map.gz: ip.map.new
 	mv t.gz ip.map.gz
 
 ip.map.bz2: ip.map.new
-	bzip -c <ip.map >t.bz2
+	bzip2 -c <ip.map >t.bz2
 	mv t.bz2 ip.map.bz2
 
 ip.map: ip.map.bz2
