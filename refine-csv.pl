@@ -47,7 +47,7 @@ while (my $row= $parser->getline($IP2Lcsv)) {
 		$rcode= $dstate{$rname} or die "no state code for '$rname'";
 	}
 	my $ndx= $nub{qq{"$ccode","rname","rcode"}};
-	$writer->print($icscsv, [$topip, $ndx]);
+	$writer->print($nubcsv, [$topip, $ndx]);
 }
 close $IP2Lcsv;
 close $nubcsv;
