@@ -1,8 +1,8 @@
 main: main.c timeout.h mapdate.h refdata.h localdata.h
 	cc $@.c -o $@
 
-all: main ip.map.bz2 ip.map.gz
-	./deploy
+distribute: main ip.map.bz2 ip.map.gz distribute.sh
+	./distribute.sh
 
 mapdate.h: buildmapdate
 	./$<
