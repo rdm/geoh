@@ -10,5 +10,6 @@ sudo mv main geoh
 sudo svc -t /etc/service/geoh*
 sleep 1
 sudo svstat /etc/service/geoh*
+set +v
 echo $(pgrep geoh | wc -l) running server instances
 echo should be ready to cut a fresh AMI from Instance ID $(wget -q -O - http://169.254.169.254/latest/meta-data/instance-id)
