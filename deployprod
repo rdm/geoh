@@ -1,5 +1,6 @@
 #!/bin/sh
 set -ve
+cd ~/src
 bzip2 -d <ip.map.bz2 >ip.map.tmp
 mv ip.map.tmp ip.map
 make -o localdata.h -o refdata.h main
