@@ -27,10 +27,10 @@ ip-country-state.csv: ip2location/IP-COUNTRY-REGION-CITY.CSV
 	perl refine-csv.pl
 	mv ip-country-state.csv.tmp ip-country-state.csv
 
-ip-nub.csv: ip-nub.csv.tmp ip-country-state.csv
+ip-nub.csv: ip-country-state.csv
 	mv $@.tmp $@
 
-country-state.csv: country-state.csv.tmp ip-country-state.csv
+country-state.csv: ip-country-state.csv
 	mv $@.tmp $@
 
 ip.map.new: buildmap country-state.csv ip-nub.csv
