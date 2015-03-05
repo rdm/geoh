@@ -27,7 +27,7 @@ while (my $row= $parser->getline($IP2Lcsv)) {
 	if ('US' eq $ccode) {
 		$rcode= $dstate{$rname} or die "no state code for '$rname'";
 	}
-	$cs{qq{"$ccode","rname","rcode"}}= [$ccode, $rname, $rcode];
+	$cs{qq{"$ccode","$rname","$rcode"}}= [$ccode, $rname, $rcode];
 	$writer->print($icscsv, [$topip, $ccode, $rname, $rcode]);
 }
 close $IP2Lcsv;
@@ -40,7 +40,7 @@ for $cs (sort keys %cs) {
 	$writer->print($cscsv, $cs{$cs});
 }
 close $cscsv;
-print "Wrote $ndx rows to country-state.csv";
+print "Wrote $ndx rows to country-state.csv\n";
 
 open $IP2Lcsv, 'ip2location/IP-COUNTRY-REGION-CITY.csv' or die $!;
 open my $nubcsv, '>ip-nub.csv.tmp' or die $!;
