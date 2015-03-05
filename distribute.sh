@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-set $(git ls-tree -r master --name-only | fgrep -v git) ip.map.{gz,bz2} 
+set $(git ls-tree -r master --name-only | fgrep -v git) ip.map.{gz,bz2} *.h
 
 echo "$@"
 

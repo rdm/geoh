@@ -1,0 +1,6 @@
+#!/bin/sh
+
+set -e
+
+./local 108.56.67.13 | fgrep Virginia
+./local 45.53.251.192 | fgrep 'New York'
