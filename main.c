@@ -212,7 +212,7 @@ long txt2rawip(char *parse) {
 int lookuplocal(int ndx, char*callback, int callbacklen) {
 	char body[2048];
 	char *buf= body;
-	char *forwarded= strstr(workfds[ndx].buf, "X-Forwarded-For: ");
+	char *forwarded= strcasestr(workfds[ndx].buf, "X-Forwarded-For: ");
 	unsigned long addr;
 	if (forwarded) {
 		forwarded+= LENGTHOF("X-Forwarded-For: ");
