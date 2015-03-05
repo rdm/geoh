@@ -12,6 +12,9 @@ while (my $row= $writer->getline($csv)) {
 }
 close $csv;
 
+# Pass 1:
+# Extract just the columns we are interested in
+# Build ref data for later
 my @topip=();
 my @ccode=();
 my @state=();
@@ -37,6 +40,7 @@ for $cs (sort keys %cs) {
 	$writer->print($cscsv, $cs{$cs});
 }
 close $cscsv;
+print "Wrote $ndx rows to country-state.csv";
 
 open $IP2Lcsv, 'ip2location/IP-COUNTRY-REGION-CITY.csv' or die $!;
 open my $nubcsv, '>ip-nub.csv.tmp' or die $!;
@@ -46,7 +50,8 @@ while (my $row= $parser->getline($IP2Lcsv)) {
 	if ('US' eq $ccode) {
 		$rcode= $dstate{$rname} or die "no state code for '$rname'";
 	}
-	my $ndx= $nub{qq{"$ccode","rname","rcode"}};
+	die qq{No index for "$ccode","$rname","$rcode"\n} unless exists $nub{qq{"$ccode","$rname","$rcode"}};
+	my $ndx= $nub{qq{"$ccode","$rname","$rcode"}};
 	$writer->print($nubcsv, [$topip, $ndx]);
 }
 close $IP2Lcsv;
