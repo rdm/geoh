@@ -2,8 +2,10 @@ main: main.c timeout.h mapdate.h refdata.h localdata.h
 	cc $@.c -o $@
 
 distribute: main ip.map.bz2 ip.map.gz distribute.sh
+	./testlocal.test
 	./distribute.sh
 	. $$HOME/.ssh-agent.sh && ssh -v ubuntu@54.204.234.199 sh src/deployprod
+	./testremote.test
 
 mapdate.h: buildmapdate
 	./$<
@@ -48,3 +50,11 @@ ip.map.bz2: ip.map.new
 ip.map: ip.map.bz2
 	bzip -dc <ip.map.bz2 >t.bz2
 	mv t.bz2 ip.map
+
+local: local.c
+
+testlocal.test: local testlocal
+	./testlocal >$@
+
+testremote.test: local testremote
+	./testremote >$@

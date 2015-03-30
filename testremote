@@ -1,0 +1,10 @@
+#!/bin/sh
+
+remote() {
+	lynx -mime_header http://FIXME.FIXME.com/key=FIXME/ip=$1
+}
+
+set -e
+
+remote 108.56.67.13 | fgrep Virginia
+remote 45.53.251.192 | fgrep 'New York'
