@@ -1,7 +1,7 @@
 #!/bin/sh
 
 remote() {
-	lynx -mime_header http://ec2-54-204-234-199.compute-1.amazonaws.com/key=FIXME/ip=$1
+	lynx -mime_header http://FIXME.FIXME.com/key=FIXME/ip=$1
 }
 
 set -e
