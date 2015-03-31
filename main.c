@@ -1,3 +1,6 @@
+#ifdef __linux__
+#define _GNU_SOURCE
+#endif
 #include <arpa/nameser.h>
 #include <ctype.h>
 #include <errno.h>
@@ -197,14 +200,41 @@ int initwordforming() {
 	return 0;
 }
 
+int isadigit[256];
+int initdigit() {
+	return
+	isadigit['0']= 
+	isadigit['1']= 
+	isadigit['2']= 
+	isadigit['3']= 
+	isadigit['4']= 
+	isadigit['5']= 
+	isadigit['6']= 
+	isadigit['7']= 
+	isadigit['8']= 
+	isadigit['9']= 1;
+}
+
+/* strol giving bogus endptr in ec2 instance, so don't use strtol */
+long strtol10(char *p, char**end) {
+	long r= 0;
+	while (' '==*p) p++;
+	while (isadigit[*p]) {
+		r*= 10;
+		r+= (*p++)-'0';
+	}
+	*end= p;
+	return r;
+}
+
 long txt2rawip(char *parse) {
-	long byte0= strtol(parse, &parse, 10);
+	long byte0= strtol10(parse, &parse);
 	if (byte0<0||byte0>255||'.'!=*parse++) return -1;
-	long byte1= strtol(parse, &parse, 10);
+	long byte1= strtol10(parse, &parse);
 	if (byte1<0||byte1>255||'.'!=*parse++) return -1;
-	long byte2= strtol(parse, &parse, 10);
+	long byte2= strtol10(parse, &parse);
 	if (byte2<0||byte2>255||'.'!=*parse++) return -1;
-	long byte3= strtol(parse, &parse, 10);
+	long byte3= strtol10(parse, &parse);
 	if (byte3<0||byte3>255) return -1;
 	return 256*(256*(256*byte0+byte1)+byte2)+byte3;
 }
@@ -377,6 +407,7 @@ int handlefd(int ndx, int*n, int max) {
 			workfds[ndx].roff+= siz;
 			return WRITING;
 	}
+	exit(99); /* should never get here */
 }
 
 int serve(int listenfd) {
@@ -464,6 +495,7 @@ int main(int c, char**v){
                 if (-1!=setuid(0)) die("regained root", 10);
         }
 	initwordforming();
+	initdigit();
 	pid= getpid();
         printf("process %d listening on port %d\n", pid, ntohs(listenaddr_in.sin_port));
 	fflush(stdout);
