@@ -16,7 +16,7 @@ In other words, as much as possible, do preparation work "up front" so that it d
 
 So the server is a state machine with a minimum of "moving parts".
 
-Configuration is by editing the source files recompiling. Or, failing that, by talking to me.
+Configuration is by editing the source files and recompiling. Or, failing that, by talking to me.
 
 Initial concept:
 ---------------
@@ -25,7 +25,7 @@ Geo lookup can be implemented as a memory mapped file. There are only 4 billion 
 
 It turns out that there were a bit over 3000 distinct country+region codes in the ip2location database, so I went with an 8GB memory mapped file for my initial implementation. As there are 245 distinct country codes and I also want to support 52 distinct state codes, it just didn't make sense to try squeezing things down to one byte per entry. Most of the time, only a small number of ip addresses will be "live" so the extra bulk will mostly not need to live in memory.
 
-Meanwhile, all I really need to do to implement the HTTP server is read from the client until I find a blank line, then I can look within the request for the parts that I care about. Most of the protocol is designed to deal with issues which do not matter for me.
+Meanwhile, all I really need to do to implement the HTTP server is read from the client until I find a blank line, then I can look within the request for the parts that I care about. Most of the HTTP protocol is designed to deal with issues which do not matter for me.
 
 So I run some small bits of code which generate the few thousand HTTP responses which can be valid for the geolookup results. Now all the server has to do is lookup the ip address in my mapped file to find an index, then send the response for that index to the client.
 
@@ -36,9 +36,9 @@ That said, note that the very first implementation only had one response: 400 Ba
 HTTP Pipelining:
 ---------------
 
-I really did not want to implement support for HTTP pipelining. HTTP pipelining easily doubles the complexity of my server. However, the underlying TCP protocol has some inefficiencies which mean that the network overhead of not using HTTP pipelining mcan more than outweigh the server inefficiencies. Also, my server is pretty simple, so "double the complexity" isn't all that complex.
+I really did not want to implement support for HTTP pipelining. HTTP pipelining easily doubles the complexity of my server. However, the underlying TCP protocol has some inefficiencies which mean that the network overhead of not using HTTP pipelining can more than outweigh the server inefficiencies. Also, my server is pretty simple, so "double the complexity" isn't all that complex.
 
-But also, I wanted the server to give me some information about the traffic it was serving, and the timeouts that HTTP pipelining needs are similar in structure to the timeouts needed for pipelining. So I was wanting to put some of that complexity in place anyways.
+But also, I wanted the server to give me some information about the traffic it was serving, and the timeouts that HTTP pipelining needs are similar in structure to the timeouts I might use for reporting on recent traffic. So I was wanting to put some of that complexity in place anyways.
 
 A related issue might be Denial Of Service attacks. Ideally, you want your software to have some immunity to DOS attacks. But at some point that becomes a fig-leaf and you have to rely on other people being well behaved enough (at least, statistically speaking) that you can ignore these attacks. (That won't always be the case, but nothing can ever be perfect.)
 
@@ -53,7 +53,7 @@ I'll have to do some work on the client, also, of course...
 Portability:
 -----------
 
-I have tried to make this as portable as possible. I developed the original versions on OpenBSD, and later versions on my work laptop (OS X Yosemite), and am deploying on Linux. I'll be wanting to test changes on OpenBSD on an ongoing basis. (Anything that doesn't work on all three of these operating systems should be rejected.)
+I have tried to make this as portable as possible. I developed the original versions on OpenBSD, and later versions on my work laptop (OS X Yosemite), and am deploying on Linux. I imagine I'll be wanting to test changes on OpenBSD on an ongoing basis. (Anything that doesn't work on all three of these operating systems should be rejected or fixed, sooner or later...)
 
 Logging:
 -------
@@ -64,11 +64,11 @@ Or that was the original idea... but think about pipelining for a moment. Once I
 
 But, also, when I tested this, I found that I was getting a lot of "Bad" requests which really never went anywhere. The client just opened the connection and then sat there without sending anything. But this could conceal other problems, so I count these as "Empty" instead of "Bad". "Empty" is really almost the same thing as "Neutral", except it's the initial state of a socket, before anything is received. (Once something is received the socket gets classified as "Good" or "Bad". Once the response is sent, the socket is either closed or placed into the "Neutral" state.)
 
-I also log how many connections are "Pending" - this means tcp sockets in the connected state. A logged line then looks something like this:
+I also log how many connections are "Pending" - this means tcp sockets in the connected state - we do not yet know what will happen with that connection. A logged line then looks something like this:
 
     Sun Feb 22 21:31:20 2015: NEW good: 1597, empty: 69, bad: 0, PENDING 493/499, TOTAL good: 7173, empty: 337, bad: 0
 
-The second number after PENDING is the number of readfd entries I'm holding to represent connections. This is an artifact of the design of poll() -- and note that I am assuming that readers of this documentation will be looking up each technical term that they are not familiar with, and I do understand that that will initially be frustrating -- poll() wants an array of struct pollfd and for this kind of server we manage that array in two ways:
+The second number after PENDING is the number of readfd entries I'm holding to represent connections. This is an artifact of the design of poll() -- and note that I am assuming that readers of this documentation will be looking up and hopfully trying out each technical term that they are not familiar with, and I do understand that that can initially be frustrating -- poll() wants an array of struct pollfd and for this kind of server we manage that array in two ways:
 
 * we mark the end of the array as being after the last used entry (the actual array is 1024 entries long), and
 * we mark unused entries with -1 for the file descriptor.
@@ -82,7 +82,7 @@ I'm using what ip2Location.com calls a "DB3" dataset.
 
 ip2location currently provides a reasonably competent ip dataset, updated the first of every month.
 
-I preprocess the IP-COUNTRY-REGION-CITY.CSV file that they provide using refine-csv.ijs. This is written in J (I used j version 803 - free from www.jsoftware.com). I used J because it's incredibly easy to experiment with and refactor. Now that I have this working, I might replace this step with a perl script, but honestly it's so easy as it is that I don't really care. It'll take maybe a minute or so to run, and the dataset gets updated only once a month and just pulling down a fresh copy looks like it's always going to involve some manual work.
+I preprocess the IP-COUNTRY-REGION-CITY.CSV file that they provide using refine-csv.ijs. This is written in perl. I had originally written this in J - and that was about 3 times faster than perl, and the script was maybe a fifth as long, but it's easier to find people who claim to know perl than it is to find people who claim to know J.
 
 refine-csv.ijs generates three .csv files:
 
@@ -105,6 +105,6 @@ Currently, I'm using timeouts just shy of 2 minutes for my pipeline. If I use 10
 
 Anyways... Note that the timeout I use for poll is 1 second longer than the timeout I use for logging and for pipelining. This means that typically I'll not have to run through poll twice to trigger a timeout just because some part of the system is slow. (In fact, this is a complete non-issue for my current test setup. But we've got much bigger problems to concern ourselves with...)
 
-Note also that my "listen" socket gets handled by the same loop and same timeout conditionals as everything else. Philosophically speaking, conditional statements are an order of magnitude slower than simple arithmetic statements, so I prefer to avoid conditionals when that's easy. So before I run through the main servicing loop after poll() I always set the timeout on the listening socket so that it's not timed out. If I failed to do this, the server would shut down after the first timeout interval.
+Note also that my "listen" socket gets handled by the same loop and same timeout conditionals as everything else. Philosophically speaking, conditional statements are an order of magnitude slower than simple arithmetic statements, and conditional statement are harder to test than arithmetic statements, so I prefer to avoid conditionals when that's easy - though of course I still wound up with a lot of them here... Anyways, before I run through the main servicing loop after poll() I always set the timeout on the listening socket so that it's not timed out. If I failed to do this, the server would shut down after the first timeout interval.
 
 
