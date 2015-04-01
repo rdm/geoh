@@ -27,3 +27,16 @@
 *.i*86
 *.x86_64
 *.hex
+
+# Build artifacts
+ip-country-state.csv
+ip-nub.csv
+ip.map
+ip.map.bz2
+ip.map.gz
+ip.map.new
+local
+localdata.h
+main
+mapdate.h
+refdata.h
